@@ -190,7 +190,13 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add analysis/latest.md analysis/universe-latest.md analysis/co_tuc_lich.md analysis/universe_candidates.md analysis/universe_prune.md analysis/ro_du_phong_auto.md analysis/cafef_tin.md 2>/dev/null || true
+          # LUU Y: "git add a b c" FAIL CA LENH neu chi mot file chua ton tai -> khong add gi ->
+          # bao "Khong co thay doi" du snapshot da chay xong. Phai add TUNG file mot.
+          for f in analysis/latest.md analysis/universe-latest.md analysis/co_tuc_lich.md \
+                   analysis/universe_candidates.md analysis/universe_prune.md \
+                   analysis/ro_du_phong_auto.md analysis/cafef_tin.md; do
+            [ -f "$f" ] && git add "$f" || true
+          done
           if git diff --cached --quiet; then
             echo "Khong co thay doi.";
           else
