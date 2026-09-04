@@ -1,0 +1,16 @@
+{
+  "name": "ml-portfolio",
+  "version": "1.0.0",
+  "description": "Theo doi danh muc CK ca nhan + ket noi FireAnt (live price/fundamental/ngoai rong)",
+  "type": "module",
+  "bin": {
+    "extract-ticker": "extract_ticker.js"
+  },
+  "scripts": {
+    "extract": "node extract_ticker.js",
+    "extract:all": "node extract_ticker.js --all"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

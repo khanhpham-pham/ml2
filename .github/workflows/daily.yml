@@ -1,0 +1,53 @@
+name: Daily brief
+
+# 20:00 VN (UTC+7) = 13:00 UTC, cac ngay lam viec. Chay tay qua tab Actions neu can.
+on:
+  schedule:
+    - cron: "0 13 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-brief
+  cancel-in-progress: false
+
+jobs:
+  brief:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Sinh ban tin (ket noi FireAnt)
+        env:
+          FIREANT_TOKEN: ${{ secrets.FIREANT_TOKEN }}
+        run: |
+          if [ -z "$FIREANT_TOKEN" ]; then
+            echo "::error::Chua co secret FIREANT_TOKEN."
+            exit 1
+          fi
+          export RUN_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          node daily_brief.js > /dev/null
+          {
+            echo "## Ban tin danh muc";
+            echo '```';
+            cat daily-brief.md;
+            echo '```';
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit brief + history vao repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add daily-brief.md history/metrics.jsonl
+          if git diff --cached --quiet; then
+            echo "Khong co thay doi."
+          else
+            git commit -m "Daily brief $(date -u +%Y-%m-%d)"
+            git push
+          fi

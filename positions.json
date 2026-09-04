@@ -1,0 +1,30 @@
+{
+  "_doc": "So vi the danh muc. Cap nhat MOI KHI co giao dich -> commit. Cac key snapshot (pl_snapshot_*, ray_tin_*) duoc them dan theo ngay, khong xoa.",
+  "updated": "CHUA KHOI TAO",
+  "portfolio_cost_vnd": 0,
+  "n_positions": 0,
+  "_weight_note": "Moi lan noi 'X% danh muc' PHAI ghi ro /CP (gia tri co phieu) hay /NAV (gom tien mat). Danh gia tap trung thi dung /CP - xem loi #9 trong CLAUDE.md.",
+  "default_horizon": "CHUA CHON - dien vao (swing / trung han / dai han)",
+  "horizon_note": "",
+  "concentration": {
+    "_doc": "Nguong canh bao tap trung. Loi #7: khi mot lenh day 1 ma vuot ~25% von CP -> DUNG, chi ra lo hong bang SO, bat xac nhan lan 2.",
+    "canh_bao_pct_CP": 25
+  },
+  "positions": {},
+  "cash_tr": 0,
+  "realized_trades": [],
+  "pending_dividends": [],
+  "capital_events": [],
+  "re_entry_watch": {},
+  "add_candidates": [],
+  "swap_priority": [],
+  "rui_ro_file": "rui_ro_danh_muc.md",
+  "_cau_truc_position_mau": {
+    "MA": {
+      "shares": 0,
+      "avg_cost": 0,
+      "y_dinh": "GIU / GIU-RUI RO / ADD tren dip / ...",
+      "moc_review": "dieu kien gi thi xem lai vi the nay"
+    }
+  }
+}

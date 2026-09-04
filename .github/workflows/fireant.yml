@@ -1,0 +1,215 @@
+name: FireAnt snapshot
+
+# Chay tay tu tab Actions (workflow_dispatch).
+# MOT LAN CHAY = TRON GOI PHAN TICH: snapshot day du (co ban + co dong + noi bo + tin tieu de)
+# + CFO 8 quy, cho TAT CA vi the (mac dinh) hoac cac ma chi dinh.
+# Ket qua ghi vao analysis/latest.md va commit vao repo -> doc lai bang get_file_contents (re token).
+on:
+  workflow_dispatch:
+    inputs:
+      tickers:
+        description: "Ma can lay (cach nhau dau cach). De trong = tat ca vi the."
+        required: false
+        default: ""
+      extra:
+        description: "Co the them co: --news (tin day du), --fast (bo qua enrich)."
+        required: false
+        default: ""
+  # Tu dong (gio VN = UTC+7), TAT CA CAC NGAY. Hai nhip:
+  #  - HOLDINGS (--all, 27 ma) 3 lan/ngay: 8:30 / 12:00 / 15:30 -> analysis/latest.md
+  #  - UNIVERSE (--universe, 131 ma) 1 lan/ngay: 16:30 -> analysis/universe-latest.md
+  # Hai file rieng, moi cai tuoi theo nhip cua no; hau het lan soi chi can DOC file.
+  schedule:
+    - cron: "30 1 * * *"   # 08:30 VN  -> holdings (--all)
+    - cron: "0 5 * * *"    # 12:00 VN  -> holdings (--all)
+    - cron: "30 8 * * *"   # 15:30 VN  -> holdings (--all)
+    - cron: "30 9 * * *"   # 16:30 VN  -> universe (--universe)
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fireant-analysis
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Chay extract_ticker - tron goi snapshot + CFO
+        env:
+          FIREANT_TOKEN: ${{ secrets.FIREANT_TOKEN }}
+        run: |
+          if [ -z "$FIREANT_TOKEN" ]; then
+            echo "::error::Chua co secret FIREANT_TOKEN. Settings -> Secrets and variables -> Actions -> New repository secret -> FIREANT_TOKEN"
+            exit 1
+          fi
+          ARGS="${{ github.event.inputs.tickers }}"
+          if [ -z "$ARGS" ]; then
+            # Lich: cron 16:30 (30 9) -> universe; cac cron holdings khac -> --all.
+            # Bam tay de trong -> --all (holdings).
+            if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" = "30 9 * * *" ]; then
+              ARGS="--universe"
+            else
+              ARGS="--all"
+            fi
+          fi
+          EXTRA="${{ github.event.inputs.extra }}"
+          RUN_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          # File dich: universe -> file rieng de KHONG ghi de goi holdings (va nguoc lai).
+          case "$ARGS" in
+            *--universe*) OUTFILE="analysis/universe-latest.md"; TITLE="Goi phan tich TOAN UNIVERSE (131 ma)";;
+            *)            OUTFILE="analysis/latest.md";          TITLE="Goi phan tich danh muc";;
+          esac
+
+          # Tach co: --news la MODE RIENG (short-circuit, chi in tin) nen KHONG the gop vao
+          # lenh snapshot -> chay RIENG. --fast la modifier cua snapshot -> di kem.
+          WANT_NEWS=""; case "$EXTRA" in *--news*) WANT_NEWS="1";; esac
+          FASTFLAG="";  case "$EXTRA" in *--fast*) FASTFLAG="--fast";; esac
+
+          # 1) Snapshot day du (co ban/co dong/noi bo/tin tieu de) — luon chay, co --save.
+          node extract_ticker.js $ARGS $FASTFLAG --save | tee snapshot.txt
+          # 2) CFO 8 quy (gon, 1 dong/ma).
+          node extract_ticker.js $ARGS --cfo | tee cfo.txt
+          # 3) Tin day du (chi khi yeu cau --news) — chay RIENG, KHONG thay the snapshot.
+          if [ -n "$WANT_NEWS" ]; then node extract_ticker.js $ARGS --news | tee news.txt; else : > news.txt; fi
+
+          # 4) Gom thanh 1 file goi phan tich -> commit -> doc lai re token.
+          mkdir -p analysis
+          {
+            echo "# $TITLE — $RUN_DATE";
+            echo "";
+            echo "> Ma: \`$ARGS $EXTRA\`  ·  Nguon: FireAnt (extract_ticker.js). Khong phai khuyen nghi dau tu.";
+            echo "";
+            echo "## 1. Snapshot chi tiet (co ban · co dong lon · GD noi bo · tin tieu de)";
+            echo '```';
+            cat snapshot.txt;
+            echo '```';
+            echo "";
+            echo "## 2. CFO 8 quy gan nhat (ty dong)";
+            echo '```';
+            cat cfo.txt;
+            echo '```';
+            if [ -s news.txt ]; then
+              echo "";
+              echo "## 3. Tin day du (--news)";
+              echo '```';
+              cat news.txt;
+              echo '```';
+            fi
+          } > "$OUTFILE"
+
+          cp "$OUTFILE" "$GITHUB_STEP_SUMMARY"
+
+          # 5) LICH CO TUC / QUYEN toan universe -> file rieng analysis/co_tuc_lich.md.
+          #    Chi chay khi la nhip UNIVERSE hoac bam tay (khoi lam cham cac nhip holdings 3 lan/ngay).
+          RUN_DIVCAL=""
+          case "$ARGS" in *--universe*) RUN_DIVCAL="1";; esac
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then RUN_DIVCAL="1"; fi
+          if [ -n "$RUN_DIVCAL" ]; then
+            node extract_ticker.js --universe --divcal | tee divcal.txt
+            {
+              echo "# Lich co tuc / quyen sap toi (toan universe) — $RUN_DATE";
+              echo "";
+              echo "> GDKHQ = ngay giao dich khong huong quyen: phai MUA TRUOC ngay nay moi duoc quyen.";
+              echo "> DKCC = ngay dang ky cuoi cung. Nguon: FireAnt /events/search. Khong phai khuyen nghi dau tu.";
+              echo "";
+              echo '```';
+              cat divcal.txt;
+              echo '```';
+            } > analysis/co_tuc_lich.md
+
+            # 6) DISCOVER: quet feed tin thi truong -> ma xuat hien nhieu ma CHUA co universe.
+            node extract_ticker.js --discover | tee discover.txt
+            {
+              echo "# Ung vien lam giau universe — $RUN_DATE";
+              echo "";
+              echo "> Ma XUAT HIEN trong feed tin FireAnt (/posts?type=1). Dau * = CHUA co trong universe.";
+              echo "> Xem xet them ma co * (co tin dang chu y) vao universe.json. Khong phai khuyen nghi dau tu.";
+              echo "";
+              echo '```';
+              cat discover.txt;
+              echo '```';
+            } > analysis/universe_candidates.md
+
+            # 7) PRUNE: ra soat tang WATCH -> de xuat promote/remove/keep (chong sot rac).
+            node extract_ticker.js --pruneuniverse | tee prune.txt
+            {
+              echo "# Ra soat WATCH tier universe (chong sot rac) — $RUN_DATE";
+              echo "";
+              echo "> PROMOTE = da mua -> len CORE. REMOVE = qua han review_by chua mua -> xet loai. KEEP = con han.";
+              echo "> Chu DM duyet REMOVE truoc khi xoa khoi universe.json.";
+              echo "";
+              echo '```';
+              cat prune.txt;
+              echo '```';
+            } > analysis/universe_prune.md
+
+            # 8) RODP: RO DU PHONG tu dong (dich mua) - loc ma chat tu universe, tu tai tao chong rac.
+            node extract_ticker.js --rodp | tee rodp.txt
+            {
+              echo "# Ro du phong AUTO — dich mua (loc chat tu universe) — $RUN_DATE";
+              echo "";
+              echo "> TU TAI TAO moi lan universe refresh: ma chi hien khi DANG dat chuan (ROE>=15, 0<PE<=15, PB<=2.5, No<=2.0x, ngoai danh muc).";
+              echo "> Da mua hoac tut chuan -> tu bien mat (chong rac). Chien luoc + dan ban: xem ro_du_phong.md (root).";
+              echo "";
+              echo '```';
+              cat rodp.txt;
+              echo '```';
+            } > analysis/ro_du_phong_auto.md
+          fi
+
+      - name: Ray tin CafeF (RSS, khong can API key)
+        continue-on-error: true
+        run: |
+          RUN_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          node cafef.js --hours 24 | tee cafef.txt
+          mkdir -p analysis
+          {
+            echo "# Ray tin CafeF — $RUN_DATE";
+            echo "";
+            echo "> Nguon: 5 kenh RSS cafef.vn (thi truong CK / doanh nghiep / bank / BDS / vi mo).";
+            echo "> KHONG CAN API KEY — CafeF chan theo TLS fingerprint cua Node nen script goi qua curl.";
+            echo "> Bo tro FireAnt: FireAnt = filing chinh thong theo MA (nguon goc);";
+            echo "> CafeF = tin bao chi real-time theo NGANH, thuong nhanh hon vai tieng.";
+            echo "> Muc 1 = tin dung HANG DANG CAM (doc truoc). Muc 2 = watchlist. Muc 3 = chain log theo truc.";
+            echo "";
+            echo '```';
+            cat cafef.txt;
+            echo '```';
+          } > analysis/cafef_tin.md
+
+      - name: Commit goi phan tich vao repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add analysis/latest.md analysis/universe-latest.md analysis/co_tuc_lich.md analysis/universe_candidates.md analysis/universe_prune.md analysis/ro_du_phong_auto.md analysis/cafef_tin.md 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "Khong co thay doi.";
+          else
+            git commit -m "Goi phan tich FireAnt + ray tin CafeF $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            for i in 1 2 3 4; do
+              git pull --rebase origin "${GITHUB_REF_NAME}" && git push && break || sleep $((2**i))
+            done
+          fi
+
+      - name: Upload artifact (snapshot + CFO + JSON)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fireant-snapshot
+          path: |
+            analysis/latest.md
+            analysis/universe-latest.md
+            snapshot.txt
+            cfo.txt
+            data/snapshots/*.json
+          if-no-files-found: ignore
+          retention-days: 14

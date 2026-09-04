@@ -1,0 +1,7 @@
+node_modules/
+# Du lieu live/tam (positions.json van git-track theo _doc)
+data/
+snapshot.txt
+# Token FireAnt - KHONG BAO GIO commit
+.fireant_token
+.env
