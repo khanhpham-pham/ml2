@@ -1118,12 +1118,19 @@ async function main() {
   } else if (flags.has("all") || targets.length === 0) {
     targets = Object.keys(positions);
   }
-  if (targets.length === 0) {
+  // Cac mode STANDALONE khong can danh sach ma (doc file/universe.json san co).
+  // Truoc day guard duoi day chan het chung khi positions.json rong (danh muc moi khoi tao)
+  // -> discover/prune/rodp im lang, file analysis/* ra rong ma workflow van bao success.
+  const STANDALONE = ["discover", "pruneuniverse", "rodp", "tiers"];
+  const isStandalone = STANDALONE.some((f) => flags.has(f));
+  if (targets.length === 0 && !isStandalone) {
     console.error("Khong co ma nao. Dung: node extract_ticker.js FPT HPG  |  --all  |  --universe");
     process.exit(1);
   }
 
-  if (!TOKEN) {
+  // rodp/tiers/pruneuniverse chi DOC file san co -> khong can token.
+  const NEEDS_TOKEN = !["rodp", "tiers", "pruneuniverse"].some((f) => flags.has(f));
+  if (!TOKEN && NEEDS_TOKEN) {
     console.error(
       "\n⚠️  Thieu FIREANT_TOKEN.\n" +
         "   export FIREANT_TOKEN='eyJ...'   (local)\n" +
