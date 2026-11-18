@@ -1,4 +1,4 @@
-# Ban tin danh muc — 2026-11-17
+# Ban tin danh muc — 2026-11-18
 
 **Tong von** 0d · **Gia tri TT** 0d · **P&L n/a**  ·  0 vi the
 
@@ -19,4 +19,4 @@
 - (khong co ma cung nganh diem cao hon dang giu ngoai danh muc)
 
 ---
-*Tu dong tao boi extract_ticker.js @ 2026-11-17T21:24:05Z. "Diem"/"tot hon" la proxy chat luong+dinh gia, KHONG xet chu ky/cau chuyen rieng — soi tung ma truoc khi hanh dong. Khong phai khuyen nghi dau tu.*
+*Tu dong tao boi extract_ticker.js @ 2026-11-18T20:56:14Z. "Diem"/"tot hon" la proxy chat luong+dinh gia, KHONG xet chu ky/cau chuyen rieng — soi tung ma truoc khi hanh dong. Khong phai khuyen nghi dau tu.*
