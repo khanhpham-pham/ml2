@@ -19,4 +19,4 @@
 - (khong co ma cung nganh diem cao hon dang giu ngoai danh muc)
 
 ---
-*Tu dong tao boi extract_ticker.js @ 2026-11-24T00:26:00Z. "Diem"/"tot hon" la proxy chat luong+dinh gia, KHONG xet chu ky/cau chuyen rieng — soi tung ma truoc khi hanh dong. Khong phai khuyen nghi dau tu.*
+*Tu dong tao boi extract_ticker.js @ 2026-11-24T22:48:14Z. "Diem"/"tot hon" la proxy chat luong+dinh gia, KHONG xet chu ky/cau chuyen rieng — soi tung ma truoc khi hanh dong. Khong phai khuyen nghi dau tu.*
